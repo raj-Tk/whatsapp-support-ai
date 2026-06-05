@@ -1,10 +1,14 @@
 from fastapi import FastAPI
 
+from app.routers import users
+
 app = FastAPI(
     title="WhatsApp Support Automation System",
     description="AI-powered support automation system with ticket routing, auto-resolution, and feedback learning.",
     version="1.0.0",
 )
+
+app.include_router(users.router)
 
 
 @app.get("/")
