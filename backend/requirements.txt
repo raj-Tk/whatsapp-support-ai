@@ -3,6 +3,7 @@ uvicorn[standard]
 pydantic-settings
 python-dotenv
 sqlalchemy
+psycopg2-binary
 groq
 pytest
 httpx
