@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import User, Ticket, Conversation, Notification
 from app.schemas.chat import ChatMessageRequest, ChatMessageResponse
 from app.services import classify_message, decide_next_action, auto_resolve
+from app.websocket import connection_manager
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -25,7 +26,7 @@ def _assign_agent(db: Session, escalation: bool = False) -> str | None:
 
 
 @router.post("/", response_model=ChatMessageResponse)
-def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db)):
+async def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db)):
     user = db.get(User, payload.user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -34,6 +35,7 @@ def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db)):
     decision, reason = decide_next_action(classification)
 
     ticket_id = None
+    assigned_agent_id = None
 
     if decision == "auto_resolve":
         system_response = auto_resolve(db, user, classification)
@@ -101,14 +103,53 @@ def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db)):
         confidence=classification.overall_confidence,
     )
     db.add(system_message)
+    db.flush()
 
     db.commit()
     db.refresh(user_message)
+    db.refresh(system_message)
 
-    return ChatMessageResponse(
+    response = ChatMessageResponse(
         message_id=user_message.id,
         classification=classification,
         decision=decision,
         ticket_id=ticket_id,
         system_response=system_response,
     )
+
+    await connection_manager.send_to_user(
+        user.id,
+        {
+            "event": "chat.processed",
+            "user_message": {
+                "id": user_message.id,
+                "message": user_message.message,
+                "message_type": user_message.message_type,
+            },
+            "system_message": {
+                "id": system_message.id,
+                "message": system_message.message,
+                "message_type": system_message.message_type,
+            },
+            "classification": classification.model_dump(),
+            "decision": decision,
+            "ticket_id": ticket_id,
+        },
+    )
+
+    if assigned_agent_id:
+        await connection_manager.send_to_user(
+            assigned_agent_id,
+            {
+                "event": "ticket.assigned",
+                "ticket_id": ticket_id,
+                "customer_id": user.id,
+                "customer_name": user.name,
+                "category": classification.primary_category,
+                "confidence": classification.overall_confidence,
+                "message": payload.message,
+                "system_response": system_response,
+            },
+        )
+
+    return response

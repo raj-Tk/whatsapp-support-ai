@@ -23,6 +23,7 @@ This project is built for an AI Engineer assignment covering:
 - **AI Classifier:** Groq LLM zero-shot classification
 - **Testing:** Pytest
 - **Notifications:** Mock in-app notification records
+- **Realtime:** FastAPI WebSockets
 
 ## Why This AI Approach
 
@@ -46,6 +47,7 @@ Customer Message
   -> Auto Resolver OR Ticket Router
   -> Conversation Store
   -> Notification Store
+  -> WebSocket Broadcast
   -> Agent Feedback Loop
   -> Metrics API
 ```
@@ -149,6 +151,21 @@ The backend creates mock in-app notifications for:
 - escalated tickets
 
 This keeps the notification architecture provider-agnostic. Email, SMS, Twilio, or WhatsApp Cloud API can be added later behind the same concept.
+
+### Realtime Updates
+
+Clients can subscribe to live updates with:
+
+```text
+ws://127.0.0.1:8000/ws/{user_id}
+```
+
+The chat endpoint broadcasts:
+
+- `chat.processed` to the customer
+- `ticket.assigned` to the assigned agent or supervisor
+
+This allows the future customer chat UI and agent dashboard to update without polling.
 
 ### Metrics
 
@@ -327,6 +344,12 @@ PATCH /notifications/{notification_id}
 GET /metrics/summary
 ```
 
+### WebSocket
+
+```text
+ws://127.0.0.1:8000/ws/{user_id}
+```
+
 ## Demo Flow
 
 ### 1. Auto-resolution
@@ -451,4 +474,3 @@ Given more time, I would add:
 - Docker Compose for API + PostgreSQL
 - frontend agent dashboard
 - fine-tuned DistilBERT or XLM-R classifier using feedback data
-

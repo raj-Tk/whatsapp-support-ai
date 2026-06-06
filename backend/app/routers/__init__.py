@@ -1,3 +1,3 @@
-from app.routers import conversations, metrics, notifications, users
+from app.routers import conversations, metrics, notifications, realtime, users
 
-__all__ = ["conversations", "metrics", "notifications", "users"]
+__all__ = ["conversations", "metrics", "notifications", "realtime", "users"]
