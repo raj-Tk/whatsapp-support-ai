@@ -1,8 +1,20 @@
-from datetime import date
+﻿from datetime import date
 from decimal import Decimal
 
 from app.database import SessionLocal
-from app.models import Invoice, User
+from app.models import CategoryThreshold, Invoice, User
+
+
+DEFAULT_CATEGORY_THRESHOLDS = [
+    ("Attendance Request", 0.70, True),
+    ("Billing Inquiry", 0.75, True),
+    ("Account Access", 0.85, False),
+    ("Technical Glitch", 0.80, False),
+    ("Complaint", 0.80, False),
+    ("Feature Request", 0.75, False),
+    ("General FAQ", 0.70, True),
+    ("Escalation", 0.90, False),
+]
 
 
 def seed_users(db):
@@ -66,8 +78,7 @@ def seed_users(db):
     ]
 
     for user in users:
-        existing = db.get(User, user.id) # This script is idempotent. means it will not dublicate user/invoices. this is the function 
-
+        existing = db.get(User, user.id)
         if existing is None:
             db.add(user)
 
@@ -98,6 +109,23 @@ def seed_invoices(db):
             db.add(invoice)
 
 
+def seed_category_thresholds(db):
+    for category, threshold, automation_enabled in DEFAULT_CATEGORY_THRESHOLDS:
+        existing = (
+            db.query(CategoryThreshold)
+            .filter(CategoryThreshold.category == category)
+            .first()
+        )
+        if existing is None:
+            db.add(
+                CategoryThreshold(
+                    category=category,
+                    threshold=threshold,
+                    automation_enabled=automation_enabled,
+                )
+            )
+
+
 def seed_db():
     db = SessionLocal()
     try:
@@ -105,6 +133,9 @@ def seed_db():
         db.commit()
 
         seed_invoices(db)
+        db.commit()
+
+        seed_category_thresholds(db)
         db.commit()
 
         print("Database seeded successfully.")

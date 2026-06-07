@@ -1,4 +1,7 @@
+﻿from sqlalchemy.orm import Session
+
 from app.config import settings
+from app.models import CategoryThreshold
 from app.schemas import ClassificationResult
 
 
@@ -9,11 +12,40 @@ AUTOMATABLE_CATEGORIES = {
 }
 
 
-def decide_next_action(classification: ClassificationResult) -> tuple[str, str]:
-    if classification.overall_confidence < settings.confidence_threshold:
+def get_category_policy(
+    classification: ClassificationResult,
+    db: Session | None = None,
+) -> tuple[float, bool]:
+    if db is None:
+        return (
+            settings.confidence_threshold,
+            classification.primary_category in AUTOMATABLE_CATEGORIES,
+        )
+
+    policy = (
+        db.query(CategoryThreshold)
+        .filter(CategoryThreshold.category == classification.primary_category)
+        .first()
+    )
+    if policy is None:
+        return (
+            settings.confidence_threshold,
+            classification.primary_category in AUTOMATABLE_CATEGORIES,
+        )
+
+    return policy.threshold, policy.automation_enabled
+
+
+def decide_next_action(
+    classification: ClassificationResult,
+    db: Session | None = None,
+) -> tuple[str, str]:
+    threshold, automation_enabled = get_category_policy(classification, db)
+
+    if classification.overall_confidence < threshold:
         return (
             "human_required",
-            "Confidence is below the automation threshold.",
+            f"Confidence is below the category threshold ({threshold:.0%}).",
         )
 
     if classification.escalation_signals:
@@ -46,13 +78,13 @@ def decide_next_action(classification: ClassificationResult) -> tuple[str, str]:
             "Multi-issue message requires human review.",
         )
 
-    if classification.primary_category not in AUTOMATABLE_CATEGORIES:
+    if not automation_enabled:
         return (
             "human_required",
-            "Category is not eligible for automation.",
+            "Automation is disabled for this category.",
         )
 
     return (
         "auto_resolve",
-        "Category is eligible for automation and confidence is above threshold.",
+        "Category automation is enabled and confidence is above threshold.",
     )

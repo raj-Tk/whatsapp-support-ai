@@ -1,7 +1,8 @@
-from app.database import Base, engine
+﻿from app.database import Base, engine
 from app.models import (
     AgentFeedback,
     Attendance,
+    CategoryThreshold,
     Conversation,
     Invoice,
     Notification,

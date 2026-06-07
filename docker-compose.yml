@@ -1,0 +1,37 @@
+﻿services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: whatsapp_support
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d whatsapp_support"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY:-your_groq_api_key_here}
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/whatsapp_support
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      CONFIDENCE_THRESHOLD: 0.70
+      DEMO_LOGIN_PASSWORD: ${DEMO_LOGIN_PASSWORD:-demo123}
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python -m app.init_db && python -m app.seed_db && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  postgres_data:

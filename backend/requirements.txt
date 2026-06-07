@@ -1,9 +1,10 @@
-fastapi
+﻿fastapi
 uvicorn[standard]
 pydantic-settings
 python-dotenv
 sqlalchemy
 psycopg2-binary
+python-jose
 groq
 pytest
 httpx

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,7 @@ async def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="User not found")
 
     classification = classify_message(payload.message)
-    decision, reason = decide_next_action(classification)
+    decision, reason = decide_next_action(classification, db)
 
     ticket_id = None
     assigned_agent_id = None
@@ -153,3 +153,4 @@ async def process_chat(payload: ChatMessageRequest, db: Session = Depends(get_db
         )
 
     return response
+

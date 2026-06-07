@@ -1,0 +1,88 @@
+﻿\documentclass[11pt,a4paper]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\definecolor{accent}{HTML}{7C3AED}
+\definecolor{ink}{HTML}{111827}
+\definecolor{muted}{HTML}{4B5563}
+
+\hypersetup{colorlinks=true, linkcolor=accent, urlcolor=accent}
+\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\titlerule]
+\setlist[itemize]{noitemsep, topsep=2pt}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{WhatsApp Support Automation System}
+\rhead{AI Engineer Assignment}
+\cfoot{\thepage}
+
+\title{\textbf{WhatsApp Support Automation System}\\\large Technical Report}
+\author{AI Engineer Assignment Submission}
+\date{2026}
+
+\begin{document}
+\maketitle
+
+\section{Problem Statement}
+The goal is to build an AI-powered WhatsApp-style support automation system that classifies incoming customer messages, decides whether the issue can be safely auto-resolved, routes complex cases to human agents, and captures feedback for continuous learning. The system supports customers, agents, supervisors, and admins through a production-oriented backend architecture.
+
+\section{System Architecture}
+\begin{verbatim}
+Customer Message
+  -> FastAPI Chat Endpoint
+  -> Groq LLM Classifier
+  -> Deterministic Decision Engine
+  -> Auto Resolver OR Ticket Router
+  -> PostgreSQL Conversation/Ticket Store
+  -> Notification + WebSocket Broadcast
+  -> Agent Feedback + Metrics Loop
+\end{verbatim}
+
+The backend separates responsibilities into routers, services, schemas, and database models. FastAPI routers expose workflows, Pydantic schemas define API contracts, SQLAlchemy models persist state in PostgreSQL, and services isolate AI classification, authentication, decisioning, and automation logic.
+
+\section{AI Approach and Tradeoffs}
+\begin{tabular}{>{\raggedright}p{0.22\linewidth} >{\raggedright}p{0.34\linewidth} >{\raggedright\arraybackslash}p{0.34\linewidth}}
+\textbf{Approach} & \textbf{Strengths} & \textbf{Limitations} \\
+BERT/DistilBERT & Fast inference, low cost at scale, good after fine-tuning & Requires labelled data and training time \\
+OpenAI/Gemini/Claude/Groq & Strong zero-shot reasoning, handles Hinglish/sarcasm/multi-issue cases & API dependency and per-call cost \\
+Classic ML/TF-IDF & Simple, explainable baseline & Weak on sarcasm and mixed-language support \\
+Fine-tuning & Best long-term control and cost profile & Needs feedback data and evaluation pipeline \\
+\end{tabular}
+
+For this 5--7 day assignment, Groq LLM zero-shot classification was selected because the requirements emphasize edge cases such as Hinglish, sarcasm, escalation, and multi-issue reasoning. The classifier is wrapped behind a service interface, so it can later be replaced by a fine-tuned DistilBERT or XLM-R model trained from agent feedback.
+
+\section{Classification Output}
+The AI layer returns a strict Pydantic-validated structure containing primary category, all categories, confidence, sentiment score, sarcasm flag, frustration level, escalation signal, language, and human-review reason. This prevents raw LLM text from leaking into the workflow and gives the decision engine a typed contract.
+
+\section{Automation Decisioning}
+The decision engine combines AI output with deterministic business rules. Automation is allowed only when confidence exceeds the category threshold, automation is enabled for that category, no escalation or sarcasm is detected, frustration is low, and the message is not multi-issue. Admins can tune thresholds per category through dedicated APIs.
+
+\section{Database Design}
+Core tables include users, tickets, conversations, agent feedback, attendance, invoices, notifications, and category thresholds. Tickets represent workflow state, conversations preserve multi-turn history, notifications support in-app delivery, and feedback records create labelled data for future active learning.
+
+\section{Feedback Learning Loop}
+Agents can approve or reject automation suggestions and correct categories. These records are stored in the \texttt{agent\_feedback} table. In production, this data would be reviewed weekly to calculate false positives, false negatives, and category-level accuracy, then used to improve prompts or fine-tune a smaller model.
+
+\section{Realtime and Notifications}
+The backend supports WebSocket updates through \texttt{/ws/\{user\_id\}} and mock in-app notification records. This allows future React dashboards to receive live chat and ticket assignment events without polling.
+
+\section{Evaluation}
+The repository includes \texttt{dataset/sample\_conversations.json} with 30 labelled examples covering all eight categories, Hinglish, sarcasm, escalation, and multi-issue cases. The evaluation script can run in mock mode by default or live Groq mode when API usage is acceptable.
+
+\section{Known Limitations and Improvements}
+\begin{itemize}
+  \item Demo password login is implemented; production should use hashed per-user passwords.
+  \item Schema creation uses SQLAlchemy \texttt{create\_all}; production should use Alembic migrations.
+  \item Notification delivery is mocked in-app; Twilio, email, or WhatsApp Cloud API can be added later.
+  \item Dependency-aware multi-issue planning currently routes to humans conservatively; a rule planner could split sub-tickets automatically.
+  \item A polished React dashboard is the next step for full reviewer-facing demonstration.
+\end{itemize}
+
+\section{Conclusion}
+The system is designed as a production-style AI support workflow rather than a simple chatbot. The LLM handles flexible NLP interpretation, while deterministic backend services enforce safety, routing, thresholds, and workflow consistency. The architecture is ready for frontend integration and future model fine-tuning.
+
+\end{document}

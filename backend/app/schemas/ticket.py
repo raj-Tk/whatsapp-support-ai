@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -32,4 +32,9 @@ class TicketResolveRequest(BaseModel):
 
 class TicketEscalateRequest(BaseModel):
     supervisor_id: str | None = None
+    reason: str
+
+
+class TicketTransferRequest(BaseModel):
+    target_agent_id: str
     reason: str

@@ -1,4 +1,4 @@
-# WhatsApp Support Automation System
+﻿# WhatsApp Support Automation System
 
 AI-powered support automation backend for WhatsApp-style customer support workflows. The system classifies incoming messages, decides whether they can be auto-resolved, creates and routes human tickets, stores conversation history, sends mock in-app notifications, and captures agent feedback for active learning.
 
@@ -321,6 +321,7 @@ GET /tickets/{ticket_id}
 PATCH /tickets/{ticket_id}/claim
 PATCH /tickets/{ticket_id}/resolve
 PATCH /tickets/{ticket_id}/escalate
+PATCH /tickets/{ticket_id}/transfer
 POST /tickets/{ticket_id}/feedback
 ```
 
@@ -474,3 +475,13 @@ Given more time, I would add:
 - Docker Compose for API + PostgreSQL
 - frontend agent dashboard
 - fine-tuned DistilBERT or XLM-R classifier using feedback data
+
+## Technical Report
+
+LaTeX report source:
+
+```text
+docs/technical_report.tex
+```
+
+Compile it with any LaTeX distribution to produce the final PDF report.

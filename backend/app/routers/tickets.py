@@ -1,25 +1,32 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import AgentFeedback, Notification, Ticket, User
+from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 from app.schemas.ticket import (
     TicketClaimRequest,
     TicketEscalateRequest,
     TicketResolveRequest,
     TicketResponse,
+    TicketTransferRequest,
 )
-from app.schemas.feedback import FeedbackRequest, FeedbackResponse
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
 
+def _get_support_user(db: Session, user_id: str, detail: str) -> User:
+    user = db.get(User, user_id)
+    if user is None or user.role not in {"agent", "supervisor", "admin"}:
+        raise HTTPException(status_code=400, detail=detail)
+    return user
+
+
 @router.get("/", response_model=list[TicketResponse])
 def list_tickets(db: Session = Depends(get_db)):
-    tickets = db.query(Ticket).order_by(Ticket.created_at.desc()).all()
-    return tickets
+    return db.query(Ticket).order_by(Ticket.created_at.desc()).all()
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
@@ -40,9 +47,7 @@ def claim_ticket(
     if ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    agent = db.get(User, payload.agent_id)
-    if agent is None or agent.role not in {"agent", "supervisor", "admin"}:
-        raise HTTPException(status_code=400, detail="Invalid agent")
+    _get_support_user(db, payload.agent_id, "Invalid agent")
 
     ticket.assigned_agent_id = payload.agent_id
     ticket.status = "in_progress"
@@ -134,6 +139,37 @@ def escalate_ticket(
     return ticket
 
 
+@router.patch("/{ticket_id}/transfer", response_model=TicketResponse)
+def transfer_ticket(
+    ticket_id: str,
+    payload: TicketTransferRequest,
+    db: Session = Depends(get_db),
+):
+    ticket = db.get(Ticket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    target_agent = _get_support_user(db, payload.target_agent_id, "Invalid target agent")
+
+    ticket.assigned_agent_id = target_agent.id
+    ticket.status = "in_progress"
+    ticket.resolution_notes = f"Transferred to {target_agent.name}. Reason: {payload.reason}"
+
+    notification = Notification(
+        recipient_id=target_agent.id,
+        ticket_id=ticket.id,
+        channel="in_app",
+        message=f"Ticket {ticket.id} transferred to you. Reason: {payload.reason}",
+        status="sent",
+        sent_at=datetime.now(timezone.utc),
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(ticket)
+
+    return ticket
+
+
 @router.post("/{ticket_id}/feedback", response_model=FeedbackResponse, status_code=201)
 def submit_feedback(
     ticket_id: str,
@@ -144,9 +180,7 @@ def submit_feedback(
     if ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    agent = db.get(User, payload.agent_id)
-    if agent is None or agent.role not in {"agent", "supervisor", "admin"}:
-        raise HTTPException(status_code=400, detail="Invalid agent")
+    _get_support_user(db, payload.agent_id, "Invalid agent")
 
     feedback = AgentFeedback(
         ticket_id=ticket_id,
@@ -160,6 +194,7 @@ def submit_feedback(
 
     if payload.automation_approved:
         ticket.status = "resolved"
+        ticket.resolved_at = datetime.now(timezone.utc)
         ticket.resolution_notes = payload.actual_category
     else:
         ticket.status = "open"

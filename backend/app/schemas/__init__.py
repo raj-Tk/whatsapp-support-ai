@@ -1,3 +1,9 @@
+﻿from app.schemas.auth import LoginRequest, TokenPayload, TokenResponse
+from app.schemas.category_threshold import (
+    CategoryThresholdResponse,
+    CategoryThresholdSeed,
+    CategoryThresholdUpdate,
+)
 from app.schemas.chat import (
     ChatMessageRequest,
     ChatMessageResponse,
@@ -12,16 +18,21 @@ from app.schemas.ticket import (
     TicketEscalateRequest,
     TicketResolveRequest,
     TicketResponse,
+    TicketTransferRequest,
 )
 from app.schemas.user import UserCreate, UserResponse
 
 __all__ = [
+    "CategoryThresholdResponse",
+    "CategoryThresholdSeed",
+    "CategoryThresholdUpdate",
     "ChatMessageRequest",
     "ChatMessageResponse",
     "ClassificationResult",
     "ConversationResponse",
     "FeedbackRequest",
     "FeedbackResponse",
+    "LoginRequest",
     "MetricsResponse",
     "NotificationResponse",
     "NotificationStatusUpdate",
@@ -29,6 +40,9 @@ __all__ = [
     "TicketEscalateRequest",
     "TicketResolveRequest",
     "TicketResponse",
+    "TicketTransferRequest",
+    "TokenPayload",
+    "TokenResponse",
     "UserCreate",
     "UserResponse",
 ]

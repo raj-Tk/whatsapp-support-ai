@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     confidence_threshold: float = 0.70
+    demo_login_password: str = "demo123"
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
